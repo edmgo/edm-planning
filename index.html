@@ -12,12 +12,21 @@
     th, td { border: 1px solid #ccc; text-align: center; font-size: 12px; position: relative; height: 40px; }
     th { background: #f0f0f0; }
     .time-col { width: 60px; }
+    td { position: relative; }
+
     .event { 
-      position: absolute; left: 0; right: 0; 
-      border-radius: 6px; color: white; padding: 4px; 
-      font-size: 14px; cursor: move; overflow: hidden;
-      display: flex; flex-direction: column;
-      justify-content: center; align-items: center;
+      position: absolute; 
+      top: 0;
+      border-radius: 6px; 
+      color: white; 
+      padding: 4px; 
+      font-size: 14px; 
+      cursor: move; 
+      overflow: hidden;
+      display: flex; 
+      flex-direction: column;
+      justify-content: center; 
+      align-items: center;
       text-align: center;
       line-height: 1.2;
     }
@@ -80,7 +89,7 @@
       body { margin: 0; background: white; color: black; }
       .toolbar { display: none; }
       table { font-size: 11px; }
-      th, td { border: 1px solid #000; height: 60px; } /* hauteur augmentée en impression */
+      th, td { border: 1px solid #000; height: 60px; }
       .event {
         font-size: 14px !important;
         min-height: 30px !important;
@@ -149,7 +158,6 @@
       }
     }
 
-    // Exemples préchargés
     let events = [
       {prof: "Dupont", discipline: "Piano", salle: 3, day: 0, start: 8*60, duration: 2},     
       {prof: "Martin", discipline: "Guitare", salle: 7, day: 2, start: 10*60+30, duration: 3},
@@ -168,19 +176,12 @@
       if(!discipline) return;
 
       let salleOptions = [
-        "Salle 1 - Batterie",
-        "Salle 2 - Ensemble",
-        "Salle 3 - Piano",
-        "Salle 4 - Petite",
-        "Salle 5 - FM",
-        "Salle 6 - Piano bis",
-        "Salle 7 - Guitare",
-        "Salle 8 - MAO"
+        "Salle 1 - Batterie","Salle 2 - Ensemble","Salle 3 - Piano","Salle 4 - Petite",
+        "Salle 5 - FM","Salle 6 - Piano bis","Salle 7 - Guitare","Salle 8 - MAO"
       ];
       let salle = prompt("Choisis une salle:\n" + salleOptions.join("\n"), "Salle 1 - Batterie");
       if(!salle) return;
 
-      // Robustesse : extraire le numéro avec regex
       let salleIndex = parseInt(salle.match(/\d+/));
       if(isNaN(salleIndex) || salleIndex < 1 || salleIndex > 8) salleIndex = 1;
 
@@ -195,40 +196,111 @@
 
     function renderEvents(){
       document.querySelectorAll(".event").forEach(el=>el.remove());
+
+      let cellMap = {};
       for(let ev of events){
-        const selector = "td[data-day='"+ev.day+"'][data-time='"+ev.start+"']";
+        let key = ev.day+"-"+ev.start;
+        if(!cellMap[key]) cellMap[key] = [];
+        cellMap[key].push(ev);
+      }
+
+      for(let key in cellMap){
+    let group = cellMap[key];
+    let selector = "td[data-day='"+group[0].day+"'][data-time='"+group[0].start+"']";
+    const cell = document.querySelector(selector);
+    if(!cell) continue;
+
+    // maximum 7 affichés
+    let visibleEvents = group.slice(0,7);
+
+    visibleEvents.forEach((ev, idx)=>{
+      const div = document.createElement("div");
+      div.className = "event salle-"+ev.salle;
+
+      const profLine = document.createElement("div");
+      profLine.className = "prof";
+      profLine.textContent = ev.prof;
+      const disciplineLine = document.createElement("div");
+      disciplineLine.className = "discipline";
+      disciplineLine.textContent = ev.discipline;
+      div.appendChild(profLine);
+      div.appendChild(disciplineLine);
+
+      div.style.height = (40*ev.duration)+"px";
+      div.style.top = "0";
+      div.style.zIndex = 10;
+      div.draggable = true;
+
+      let width = 100 / visibleEvents.length;
+      div.style.width = width+"%";
+      div.style.left = (idx * width)+"%";
+
+      div.addEventListener("click", ()=>editEvent(ev));
+      div.addEventListener("dragstart", dragStart);
+      div.addEventListener("dragend", dragEnd);
+
+      let resize = document.createElement("div");
+      resize.className = "resize-handle";
+      resize.addEventListener("mousedown", (e)=>initResize(e, ev));
+      div.appendChild(resize);
+
+      cell.appendChild(div);
+    });
+
+    // S'il y a plus de 7 événements
+    if(group.length > 7){
+      const more = document.createElement("div");
+      more.style.position = "absolute";
+      more.style.bottom = "2px";
+      more.style.right = "2px";
+      more.style.fontSize = "10px";
+      more.style.background = "rgba(0,0,0,0.6)";
+      more.style.color = "white";
+      more.style.padding = "2px 4px";
+      more.style.borderRadius = "4px";
+      more.textContent = "+"+(group.length-7);
+      cell.appendChild(more);
+    }
+    continue; // éviter la duplication de la boucle d'origine
+
+        let group = cellMap[key];
+        let selector = "td[data-day='"+group[0].day+"'][data-time='"+group[0].start+"']";
         const cell = document.querySelector(selector);
         if(!cell) continue;
-        const div = document.createElement("div");
-        div.className = "event salle-"+ev.salle;
 
-        // Deux lignes : prof + discipline
-        const profLine = document.createElement("div");
-        profLine.className = "prof";
-        profLine.textContent = ev.prof;
+        group.forEach((ev, idx)=>{
+          const div = document.createElement("div");
+          div.className = "event salle-"+ev.salle;
 
-        const disciplineLine = document.createElement("div");
-        disciplineLine.className = "discipline";
-        disciplineLine.textContent = ev.discipline;
+          const profLine = document.createElement("div");
+          profLine.className = "prof";
+          profLine.textContent = ev.prof;
+          const disciplineLine = document.createElement("div");
+          disciplineLine.className = "discipline";
+          disciplineLine.textContent = ev.discipline;
+          div.appendChild(profLine);
+          div.appendChild(disciplineLine);
 
-        div.appendChild(profLine);
-        div.appendChild(disciplineLine);
+          div.style.height = (40*ev.duration)+"px";
+          div.style.top = "0";
+          div.style.zIndex = 10;
+          div.draggable = true;
 
-        div.style.top = "0";
-        div.style.height = (40*ev.duration)+"px";
-        div.style.zIndex = 10;
-        div.draggable = true;
+          let width = 100 / group.length;
+          div.style.width = width+"%";
+          div.style.left = (idx * width)+"%";
 
-        div.addEventListener("click", ()=>editEvent(ev));
-        div.addEventListener("dragstart", dragStart);
-        div.addEventListener("dragend", dragEnd);
+          div.addEventListener("click", ()=>editEvent(ev));
+          div.addEventListener("dragstart", dragStart);
+          div.addEventListener("dragend", dragEnd);
 
-        let resize = document.createElement("div");
-        resize.className = "resize-handle";
-        resize.addEventListener("mousedown", (e)=>initResize(e, ev));
-        div.appendChild(resize);
+          let resize = document.createElement("div");
+          resize.className = "resize-handle";
+          resize.addEventListener("mousedown", (e)=>initResize(e, ev));
+          div.appendChild(resize);
 
-        cell.appendChild(div);
+          cell.appendChild(div);
+        });
       }
     }
 
